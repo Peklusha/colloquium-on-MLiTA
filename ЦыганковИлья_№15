@@ -1,0 +1,80 @@
+module Derivate where
+
+data Term = 
+ X |
+ Term :+: Term | Term :-: Term | Term :/: Term | Term :*: Term | Term :^: Term | 
+ Neg Term | Exp Term | Cos Term | Sin Term | Ln Term | 
+ Const Integer 
+ deriving(Eq, Read)
+
+diff' :: Term -> Term
+diff' (Const x) = Const 0
+diff' (Const n :*: x) = Const n :*: (diff' x)
+diff' X = Const 1
+
+diff' (x :^: Const n) = Const n :*: (diff' x) :*: (x :^: (Const(n-1))) 
+
+diff' (x :+: y) = (diff' x) :+: (diff' y) 
+diff' (x :-: y) = (diff' x) :-: (diff' y)
+diff' (x :*: y) = ((diff' x) :*: y) :+: ((diff' y) :*: x)
+diff' (x :/: y) = ((diff' x) :*: y :-: (diff' y) :*: x) :/: (y :^: Const 2)
+
+diff' (Exp x) = (diff' x) :*: Exp x
+diff' (Cos x) = (diff' x) :*: Neg(Sin x)
+diff' (Sin x) = (diff' x) :*: Cos x
+diff' (Ln x) = (diff' x) :/: x
+
+simp :: Term -> Term
+simp (X) = X
+simp (Const n) = Const n
+simp (Const 0 :+: x) = simp x
+simp (x :+: Const 0) = simp x
+simp (Const 0 :-: x) = Neg(simp x)
+simp (x :-: Const 0) = simp x
+simp ((Neg x) :+: y) = (simp y) :-: (simp x)
+simp (x :+: Neg y) = (simp x) :-: (simp y)
+simp (x :-: Neg y) = (simp x) :+: (simp y)
+simp (x :*: Const 1) = simp x
+simp (Const 1 :*: x) = simp x
+simp (x :*: Const 0) = Const 0
+simp (Const 0 :*: x) = Const 0
+simp ((Neg x) :*: (Neg y)) = (simp x) :*: (simp y)
+simp ((Neg x) :*: y) = Neg ((simp x) :*: (simp y))
+simp (x :*: (Neg y)) = Neg ((simp x) :*: (simp y))
+simp (Neg(Neg x)) = simp x
+
+simp (x :^: Const n) = (simp x) :^: Const n
+
+simp (x :+: y) = (simp x) :+: (simp y)
+simp (x :-: y) = (simp x) :-: (simp y)
+simp (x :*: y) = (simp x) :*: (simp y)
+simp (x :/: y) = if x == y 
+               then Const 1
+               else (simp x) :/: (simp y)
+
+simp (Neg x) = Neg (simp x)
+simp (Exp x) = Exp (simp x)
+simp (Cos x) = Cos (simp x)
+simp (Sin x) = Sin (simp x)
+simp (Ln x) = Ln (simp x)
+
+diff :: Term -> Term
+diff x = simp $ diff' x
+
+instance Show Term where
+    show (X) = "x"
+    show (Const x) = if x > 0 
+                     then show x
+                     else "(" ++ show x ++ ")"
+
+    show (x :+: y) = "(" ++ show x ++ "+" ++ show y ++ ")"
+    show (x :-: y) = "(" ++ show x ++ "-" ++ show y ++ ")"
+    show (x :*: y) = show x ++ "*" ++ show y
+    show (x :/: y) = show x ++ "/" ++ show y
+    show (x :^: Const n) = "(" ++ show x ++ ")" ++ "^" ++ show n
+
+    show (Neg x) = "(" ++ "-" ++ show x  ++ ")"
+    show (Exp x) = "e^" ++ show x
+    show (Cos x) = "cos(" ++ show x ++ ")"
+    show (Sin x) = "sin(" ++ show x ++ ")"
+    show (Ln x) = "ln(" ++ show x ++ ")"
